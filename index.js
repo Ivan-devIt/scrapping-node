@@ -14,7 +14,7 @@ const startTime = Date.now();
 function getTime() {
   const currentTime = Date.now();
 
-  return (currentTime - startTime) / 1000;
+  return ((currentTime - startTime) / 1000).toFixed(1);
 }
 
 let start = 0;
@@ -28,17 +28,24 @@ async function getGenre(zipCode) {
 
     const infoBody = $("main .border.rounded.bg-white.p-3.mb-3");
 
-    const variantList = infoBody.find("ul.list-unstyled:first-of-type")
-      ? infoBody
-          .find("ul.list-unstyled:first-of-type")
-          .text()
-          .split("\n")
-          .filter((el) => el.trim() !== "")
-          .map((el) => el.trim())
-      : "";
+    function getNextLinks(infoBody) {
+      const links = [];
+
+      infoBody
+        .find("ul.list-unstyled:first-of-type li a")
+        .each((index, value) => {
+          const link = $(value).attr("href");
+          links.push(link);
+        });
+
+      return links;
+    }
+
+    const linksLinks = getNextLinks(infoBody);
+    console.log("linksLinks===", linksLinks);
 
     const buildData = (infoBody) => {
-      const main_title = infoBody.find("h5.mt-3").text() || "undefined";
+      const details = infoBody.find("h5.mt-3").text() || "undefined";
       const title = infoBody.find("h6").text() || "undefined";
 
       const transactions_list = infoBody.find("ul")
@@ -60,20 +67,31 @@ async function getGenre(zipCode) {
             .map((el) => el.trim())
         : "undefined";
 
+      const addressData = [];
+
+      const newAdress = infoBody
+        .find(".row.clearfix div address")
+        .each((index, value) => {
+          addressData.push(
+            $(value)
+              .text()
+              .split("\n")
+              .filter((el) => el.trim() !== "")
+              .map((el) => el.trim())
+          );
+        });
+
       const dataForCvs = {
         zip_code: `${zipCode}`,
-        details: `${main_title ? main_title.split(",")[1] : ""}`,
-        main_title: `${main_title}`,
+        details: `${details}`,
         title: `${title}`,
-        sub_title: `${addressBody[0]}`,
-        delivery_address: `${addressBody[0]},${addressBody[1]}, ${addressBody[2]}`,
-        postal_address: `${addressBody[4]},${addressBody[5]}`,
-        contact_title: `${addressBody[6]}`,
-        phone: `${addressBody[7]}`,
-        fax: `${addressBody[8]}`,
-        internet: `${addressBody[9]}`,
-        email: `${addressBody[10]}`,
-        x_justiz_id: `${addressBody[11]}`,
+        delivery_address: `${addressData[0][1]}, ${addressData[0][2]}`,
+        postal_address: `${addressData[1][0]},${addressData[1][1]}`,
+        phone: `${addressData[2][1]}`,
+        fax: `${addressData[2][2]}`,
+        internet: `${addressData[2][3]}`,
+        email: `${addressData[2][4]}`,
+        x_justiz_id: `${addressData[2][5]}`,
         transactions_title: `${addressBody[12]}`,
         transactions_list: `${transactions_list}`,
       };
@@ -81,38 +99,18 @@ async function getGenre(zipCode) {
       return dataForCvs;
     };
 
-    if (variantList.length) {
-      const variants = variantList.map((el) => el.split(" ")[1]);
-
-      console.log("variants===", variants);
-
+    if (linksLinks.length) {
       const nextData = [];
 
-      for (let k = 0; k < variants.length; k++) {
-        // "https://www.justizadressen.nrw.de/de/justiz/gericht?ang=grundbuch&plz=08393&ort=Sch%C3%B6nberg";
-        // https://www.justizadressen.nrw.de/de/justiz/gericht?ang=grundbuch&plzort=$08393&ort=Schönberg
-
-        const nextUrl = `https://www.justizadressen.nrw.de/de/justiz/gericht?ang=grundbuch&plz=${zipCode}&ort=${variants[k]}`;
-        // console.log(" \n\n nextUrl", nextUrl, "\n\n");
-
+      for (let k = 0; k < linksLinks.length; k++) {
+        const nextUrl = `${linksLinks[k]}`;
         const nextResponse = await axios.get(nextUrl);
         const $ = cheerio.load(nextResponse.data);
-
         const infoBody = $("main .border.rounded.bg-white.p-3.mb-3");
-
         const nextResData = buildData(infoBody);
-
-        // console.log("nextResData===", nextResData);
 
         nextData.push(nextResData);
       }
-
-      // const nextUrl = `${baseUrl}${zipCode}&ort=${}`;
-
-      // const nextResponse = await axios.get(nextUrl);
-      // const $ = cheerio.load(nextResponse.data);
-
-      // const infoBody = $("main .border.rounded.bg-white.p-3.mb-3");
 
       return nextData;
     } else {
@@ -121,11 +119,6 @@ async function getGenre(zipCode) {
 
       return [buildData(infoBody)];
     }
-
-    // console.log(`${zipCode} - completed !`);
-    // // console.log(`dataForCvs===`, dataForCvs);
-
-    // return dataForCvs;
   } catch (err) {
     console.log("error===", zipCode);
   }
@@ -147,27 +140,13 @@ async function getGenre(zipCode) {
 //   return zipDataArr;
 // }
 
-function readExelFile(path) {
-  const workbook = XLSX.readFile(path);
-  const worksheet = {};
-
-  for (const sheetName of workbook.SheetNames) {
-    worksheet[sheetName] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-  }
-
-  const zipCodes = worksheet[Object.keys(worksheet)[0]].map(
-    (el) => el[Object.keys(el)[0]]
-  );
-
-  return zipCodes;
-}
-
 async function getDataFromSrappin(exelDataFilePath) {
-  const zipCodeArrData = readExelFile(exelDataFilePath);
-  console.log("zipCodeArrData===", zipCodeArrData.length);
+  // const zipCodeArrData = readExelFile(exelDataFilePath);
+  const zipCodeArrData = ["16259"];
+  // const zipCodeArrData = ["99958"];
+  // const zipCodeArrData = ["22297"];
 
-  // const zipCodeArrData = ["08393"];
-  // const zipCodeArrData = ["08058"];
+  // console.log("zipCodeArrData===", zipCodeArrData.length);
 
   createNewXLSXFile({ fileName: xlsxFile, sheetName: xlsxSheetName });
 
@@ -190,8 +169,9 @@ async function getDataFromSrappin(exelDataFilePath) {
   for (let i = 0; i < zipCodeArrData.length; i++) {
     const res = await getGenre(String(zipCodeArrData[i]));
 
-    // console.log("res===", res);
+    console.log("res===", res);
 
+    // TODO add check
     res.forEach((el) =>
       updateXLSXFile({
         data: el,
@@ -199,18 +179,27 @@ async function getDataFromSrappin(exelDataFilePath) {
         xlsxSheetName: xlsxSheetName,
       })
     );
-
-    // updateXLSXFile({
-    //   data: res,
-    //   xlsxFile: xlsxFile,
-    //   xlsxSheetName: xlsxSheetName,
-    // });
   }
 
   console.log("completed scrapping data !");
 }
 
 getDataFromSrappin(exelDataFilePath);
+
+function readExelFile(path) {
+  const workbook = XLSX.readFile(path);
+  const worksheet = {};
+
+  for (const sheetName of workbook.SheetNames) {
+    worksheet[sheetName] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+  }
+
+  const zipCodes = worksheet[Object.keys(worksheet)[0]].map(
+    (el) => el[Object.keys(el)[0]]
+  );
+
+  return zipCodes;
+}
 
 function createNewXLSXFile({
   data = [{}],
