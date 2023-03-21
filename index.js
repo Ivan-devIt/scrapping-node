@@ -91,7 +91,8 @@ async function getGenre(zipCode) {
         details: `${details}`,
         title: `${title}`,
         delivery_address: `${addressData[0][1]}, ${addressData[0][2]}`,
-        postal_address: `${addressData[1][0]},${addressData[1][1]}`,
+        // postal_address: `${addressData[1][1]},${addressData[1][2]}`,
+        postal_address: `${addressData[1].slice(1).join(",")}`,
         phone: `${addressData[2][1].split(" ").slice(1).join(" ")}`,
         fax: `${addressData[2][2].split(" ").slice(1).join(" ")}`,
         internet: `${addressData[2][3].split(" ").slice(1).join(" ")}`,
@@ -166,7 +167,7 @@ async function getGenre(zipCode) {
 async function getDataFromSrappin(exelDataFilePath) {
   const zipCodeArrData = readExelFile(exelDataFilePath);
   // const zipCodeArrData = readExelFile(exelDataFilePath).slice(4190);
-  // const zipCodeArrData = ["60312"];
+  // const zipCodeArrData = ["01099"];
   // const zipCodeArrData = ["99958"];
   // const zipCodeArrData = ["22297"];
 
@@ -176,24 +177,10 @@ async function getDataFromSrappin(exelDataFilePath) {
 
   console.log("start get scrapping data ...");
 
-  // await Promise.all(
-  //   zipCodeArrData.map(async (zipCode) => {
-  //     const res = await getGenre(String(zipCode));
-
-  //     updateXLSXFile({
-  //       data: res,
-  //       xlsxFile: xlsxFile,
-  //       xlsxSheetName: xlsxSheetName,
-  //     });
-
-  //     // return res;
-  //   })
-  // );
-
   for (let i = 0; i < zipCodeArrData.length; i++) {
     const res = await getGenre(String(zipCodeArrData[i]));
 
-    // console.log("res===", res.length);
+    // console.log("res===", res);
 
     // TODO add check
     if (res) {
