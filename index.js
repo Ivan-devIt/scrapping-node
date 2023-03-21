@@ -92,11 +92,11 @@ async function getGenre(zipCode) {
         title: `${title}`,
         delivery_address: `${addressData[0][1]}, ${addressData[0][2]}`,
         postal_address: `${addressData[1][0]},${addressData[1][1]}`,
-        phone: `${addressData[2][1].split(" ")[1]}`,
-        fax: `${addressData[2][2].split(" ")[1]}`,
-        internet: `${addressData[2][3].split(" ")[1]}`,
-        email: `${addressData[2][4].split(" ")[1]}`,
-        x_justiz_id: `${addressData[2][5].split(" ")[1]}`,
+        phone: `${addressData[2][1].split(" ").slice(1).join(" ")}`,
+        fax: `${addressData[2][2].split(" ").slice(1).join(" ")}`,
+        internet: `${addressData[2][3].split(" ").slice(1).join(" ")}`,
+        email: `${addressData[2][4].split(" ").slice(1).join(" ")}`,
+        x_justiz_id: `${addressData[2][5].split(" ").slice(1).join(" ")}`,
         transactions_title: `${addressBody[12]}`,
         transactions_list: `${transactions_list}`,
       };
@@ -164,8 +164,8 @@ async function getGenre(zipCode) {
 // }
 
 async function getDataFromSrappin(exelDataFilePath) {
-  // const zipCodeArrData = readExelFile(exelDataFilePath);
-  const zipCodeArrData = readExelFile(exelDataFilePath).slice(4190);
+  const zipCodeArrData = readExelFile(exelDataFilePath);
+  // const zipCodeArrData = readExelFile(exelDataFilePath).slice(4190);
   // const zipCodeArrData = ["60312"];
   // const zipCodeArrData = ["99958"];
   // const zipCodeArrData = ["22297"];
