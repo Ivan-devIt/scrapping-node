@@ -24,6 +24,7 @@ async function getGenre(zipCode) {
 
   try {
     const response = await axios.get(url);
+
     const $ = cheerio.load(response.data);
 
     const infoBody = $("main .border.rounded.bg-white.p-3.mb-3");
@@ -41,12 +42,12 @@ async function getGenre(zipCode) {
       return links;
     }
 
-    const linksLinks = getNextLinks(infoBody);
-    console.log("linksLinks===", linksLinks);
+    const linksData = getNextLinks(infoBody);
+    // console.log("linksData===", linksData);
 
     const buildData = (infoBody) => {
-      const details = infoBody.find("h5.mt-3").text() || "undefined";
-      const title = infoBody.find("h6").text() || "undefined";
+      const details = infoBody.find("h5.mt-3").text() || " ";
+      const title = infoBody.find("h6").text() || " ";
 
       const transactions_list = infoBody.find("ul")
         ? infoBody
@@ -56,7 +57,7 @@ async function getGenre(zipCode) {
             .filter((el) => el.trim() !== "")
             .map((el) => el.trim())
             .join("; ")
-        : "undefined";
+        : " ";
 
       const addressBody = infoBody.find(".row.clearfix")
         ? infoBody
@@ -65,7 +66,7 @@ async function getGenre(zipCode) {
             .split("\n")
             .filter((el) => el.trim() !== "")
             .map((el) => el.trim())
-        : "undefined";
+        : " ";
 
       const addressData = [];
 
@@ -81,41 +82,63 @@ async function getGenre(zipCode) {
           );
         });
 
+      if (!addressData.length) {
+        return [];
+      }
+
       const dataForCvs = {
         zip_code: `${zipCode}`,
         details: `${details}`,
         title: `${title}`,
         delivery_address: `${addressData[0][1]}, ${addressData[0][2]}`,
         postal_address: `${addressData[1][0]},${addressData[1][1]}`,
-        phone: `${addressData[2][1]}`,
-        fax: `${addressData[2][2]}`,
-        internet: `${addressData[2][3]}`,
-        email: `${addressData[2][4]}`,
-        x_justiz_id: `${addressData[2][5]}`,
+        phone: `${addressData[2][1].split(" ")[1]}`,
+        fax: `${addressData[2][2].split(" ")[1]}`,
+        internet: `${addressData[2][3].split(" ")[1]}`,
+        email: `${addressData[2][4].split(" ")[1]}`,
+        x_justiz_id: `${addressData[2][5].split(" ")[1]}`,
         transactions_title: `${addressBody[12]}`,
         transactions_list: `${transactions_list}`,
       };
 
+      // console.log("dataForCvs", dataForCvs);
+
       return dataForCvs;
     };
 
-    if (linksLinks.length) {
+    if (linksData.length) {
       const nextData = [];
 
-      for (let k = 0; k < linksLinks.length; k++) {
-        const nextUrl = `${linksLinks[k]}`;
-        const nextResponse = await axios.get(nextUrl);
+      for (let k = 0; k < linksData.length; k++) {
+        const nextResponse = await axios.get(linksData[k]);
         const $ = cheerio.load(nextResponse.data);
         const infoBody = $("main .border.rounded.bg-white.p-3.mb-3");
-        const nextResData = buildData(infoBody);
+        const nextStepLinksData = getNextLinks(infoBody);
 
-        nextData.push(nextResData);
+        if (nextStepLinksData.length) {
+          const nextStepData = [];
+
+          for (let j = 0; j < nextStepLinksData.length; j++) {
+            const nextStepResponse = await axios.get(nextStepLinksData[j]);
+            const $ = cheerio.load(nextStepResponse.data);
+            const nextInfoBody = $("main .border.rounded.bg-white.p-3.mb-3");
+
+            const nextStepResData = buildData(nextInfoBody);
+
+            nextStepData.push(nextStepResData);
+          }
+
+          nextData.push(...nextStepData);
+        } else {
+          const nextResData = buildData(infoBody);
+
+          nextData.push(nextResData);
+        }
       }
 
       return nextData;
     } else {
       console.log(`${zipCode} - completed !`, `${getTime()}sec`, `#${start++}`);
-      // console.log(`dataForCvs===`, dataForCvs);
 
       return [buildData(infoBody)];
     }
@@ -142,7 +165,8 @@ async function getGenre(zipCode) {
 
 async function getDataFromSrappin(exelDataFilePath) {
   // const zipCodeArrData = readExelFile(exelDataFilePath);
-  const zipCodeArrData = ["16259"];
+  const zipCodeArrData = readExelFile(exelDataFilePath).slice(4190);
+  // const zipCodeArrData = ["60312"];
   // const zipCodeArrData = ["99958"];
   // const zipCodeArrData = ["22297"];
 
@@ -169,16 +193,18 @@ async function getDataFromSrappin(exelDataFilePath) {
   for (let i = 0; i < zipCodeArrData.length; i++) {
     const res = await getGenre(String(zipCodeArrData[i]));
 
-    console.log("res===", res);
+    // console.log("res===", res.length);
 
     // TODO add check
-    res.forEach((el) =>
-      updateXLSXFile({
-        data: el,
-        xlsxFile: xlsxFile,
-        xlsxSheetName: xlsxSheetName,
-      })
-    );
+    if (res) {
+      res.forEach((el) =>
+        updateXLSXFile({
+          data: el,
+          xlsxFile: xlsxFile,
+          xlsxSheetName: xlsxSheetName,
+        })
+      );
+    }
   }
 
   console.log("completed scrapping data !");
